@@ -12,12 +12,12 @@ def decode_utf8(string):
 
 def run_server(servercmd,target_rank,comm):
     process = subprocess.Popen(servercmd.split(),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    comm.send('running',dest = target_rank)
     stdout,stderr = process.communicate()
     if stderr:
         print('Server error: {err}'.format(err=decode_utf8(stderr)))
     if verbose:
         print('Server output: {out}'.format(out=decode_utf8(stdout)))
-    comm.send('running',dest = target_rank)
     return
 
 def run_client(clientcmd,target_rank,comm):
