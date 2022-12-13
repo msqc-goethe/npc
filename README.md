@@ -17,7 +17,9 @@ mpirun -n 2 ./npb_wrapper.py --servercmd="qperf" --clientcmd="qperf HOSTNAME [[P
 **qperf** output does not leverage automated visualization. To address this problem one can pass a custom module to parse the output
 in more suitable formats i.e. csv or json.
 ~~~
-mpirun -n 2 ./npb_wrapper.py --servercmd="qperf" --clientcmd="qperf HOSTANME [[PARAMETER]] quit" --parser=qperf_parser.py --out_format=[[csv,json]] --header Metric Value Unit
+mpirun -n 2 ./npb_wrapper.py --servercmd="qperf" --clientcmd="qperf HOSTANME [[PARAMETER]] quit" \
+--parser=qperf_parser.py --out_format=[[csv,json]] --header Metric Value Unit
+~~~
 
 ### iperf
 ~~~
