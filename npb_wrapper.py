@@ -3,10 +3,32 @@
 import argparse
 import codecs
 import sys
+import importlib
 from subprocess import Popen, PIPE
 from mpi4py import MPI
 
+
 VERBOSE = False
+
+
+class StreamParser:
+    """Generic parser class encapsulating custom parser module"""
+    def __init__(self, module, out_format, header_information):
+        self.to_format = module.to_format
+        self.format = out_format
+        self.header = header_information
+
+    def convert_to_format(self, string):
+        """Get formated output"""
+        return self.to_format(string, self.header, self.format)
+
+    def get_format(self):
+        """Get format"""
+        return self.format
+
+    def get_header(self):
+        """Get header list"""
+        return self.header
 
 
 def decode_utf8(byte_code):
@@ -25,7 +47,7 @@ def run_server(cmd, dst, communicator):
             print(f'Server output: {decode_utf8(stdout)}')
 
 
-def run_client(cmd, source, communicator):
+def run_client(cmd, source, communicator, stdout_parser=None):
     """Run client command."""
     sync = communicator.recv(source=source)
     with Popen(cmd.split(), stdout=PIPE, stderr=PIPE) as process:
@@ -34,7 +56,10 @@ def run_client(cmd, source, communicator):
             print(f'Client error: {decode_utf8(stderr)}')
         if VERBOSE:
             print(f'Client received {sync}')
-        print(decode_utf8(stdout))
+        stdout = decode_utf8(stdout)
+        if stdout_parser:
+            stdout = stdout_parser.convert_to_format(stdout)
+        print(stdout)
 
 
 if __name__ == "__main__":
@@ -47,10 +72,23 @@ if __name__ == "__main__":
                         to indicate position of real hostname / address in benchmark string')
     parser.add_argument(
         '--verbose', action=argparse.BooleanOptionalAction, help='Enable debug output')
+    parser.add_argument('--parser', type=str, help='Use given parser to directly convert\
+            benchmark output into desired format')
+    parser.add_argument('--out_format', type=str,
+                        help='Output format passed to custom cli parser')
+    parser.add_argument('--header', nargs='+', type=str,
+                        help='Header information')
     args = parser.parse_args()
 
     if args.verbose:
         VERBOSE = True
+
+    if args.parser:
+        if '.py' in args.parser:
+            args.parser = args.parser.replace('.py', '')
+        parser_module = importlib.import_module(args.parser)
+        output_parser = StreamParser(
+            parser_module, args.out_format, args.header)
 
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
@@ -75,4 +113,5 @@ if __name__ == "__main__":
         clientcmd = args.clientcmd.replace('HOSTNAME', OTHER_NAME)
         if VERBOSE:
             print(f'clientcmd: {clientcmd}')
-        run_client(clientcmd, target_rank, comm)
+        run_client(clientcmd, target_rank, comm,
+                   output_parser if args.parser else None)
