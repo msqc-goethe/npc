@@ -39,10 +39,10 @@ def to_format(input_string, header, out_format):
     lines = input_string.split('\n')
     name = lines.pop(0)
     end = 'quit:'
-    if out_format == 'csv':
-        output = header[0] + ',' + header[1] + ',' + header[2] + '\n'
-    elif out_format == 'json':
-        output = []
+    output = [] if out_format == 'json' else header[0] + ',' + header[1] + ',' + header[2] + '\n'
+    #if out_format == 'csv':
+    #    output =     elif out_format == 'json':
+    #    output = []
     for line in lines:
         if end in line:
             break
