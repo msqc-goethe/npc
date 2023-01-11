@@ -9,7 +9,7 @@ from mpi4py import MPI
 
 
 VERBOSE = False
-
+KILL = False
 
 class StreamParser:
     """Generic parser class encapsulating custom parser module"""
@@ -40,7 +40,14 @@ def run_server(cmd, dst, communicator):
     """Run server command. Notify client side when server is running."""
     with Popen(cmd.split(), stdout=PIPE, stderr=PIPE) as process:
         communicator.send('server msg', dest=dst)
-        stdout, stderr = process.communicate()
+        if KILL:
+            sync = communicator.recv(source=dst)
+            if VERBOSE:
+                print(f'Server received {sync}')
+            process.terminate()
+            stdout,stderr = process.communicate()
+        else:
+            stdout, stderr = process.communicate()
         if stderr:
             print(f'Server error: {decode_utf8(stderr)}')
         if VERBOSE:
@@ -59,6 +66,8 @@ def run_client(cmd, source, communicator, stdout_parser=None):
         stdout = decode_utf8(stdout)
         if stdout_parser:
             stdout = stdout_parser.convert_to_format(stdout)
+        if KILL:
+            communicator.send('kill server msg',dest=source)
         print(stdout)
 
 
@@ -71,6 +80,9 @@ if __name__ == "__main__":
                         help='Client command e.g. --clientcmd=[cmd]. Use HOSTNAME placeholder\
                         to indicate position of real hostname / address in benchmark string')
     parser.add_argument(
+        '--killserver', action=argparse.BooleanOptionalAction, help='Enable debug output')
+
+    parser.add_argument(
         '--verbose', action=argparse.BooleanOptionalAction, help='Enable debug output')
     parser.add_argument('--parser', type=str, help='Use given parser to directly convert\
             benchmark output into desired format')
@@ -82,7 +94,8 @@ if __name__ == "__main__":
 
     if args.verbose:
         VERBOSE = True
-
+    if args.killserver:
+        KILL = True
     if args.parser:
         if '.py' in args.parser:
             args.parser = args.parser.replace('.py', '')
