@@ -71,7 +71,6 @@ def run_client(cmd, source, communicator, stdout_parser=None):
         stdout = decode_utf8(stdout)
         if stdout_parser:
             stdout = stdout_parser.convert_to_format(stdout)
-        stdout = stdout.replace('\n', '')
         print(stdout)
 
 
