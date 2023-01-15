@@ -5,6 +5,7 @@ import codecs
 import sys
 import importlib
 import re
+import json
 from subprocess import Popen, PIPE
 from mpi4py import MPI
 
@@ -50,9 +51,9 @@ def run_server(cmd, dst, communicator, kill_server=False):
             stdout, stderr = process.communicate()
         else:
             stdout, stderr = process.communicate()
-        if stderr:
-            print(f'Server error: {decode_utf8(stderr)}')
-            communicator.Abort()
+        # if stderr:
+        #     print(f'Server error: {decode_utf8(stderr)}')
+        #     communicator.Abort()
         if VERBOSE:
             print(f'Server output: {decode_utf8(stdout)}')
 
@@ -71,7 +72,7 @@ def run_client(cmd, source, communicator, stdout_parser=None):
         stdout = decode_utf8(stdout)
         if stdout_parser:
             stdout = stdout_parser.convert_to_format(stdout)
-        print(stdout)
+        return stdout
 
 
 def evaluate_repeat_regex(string):
@@ -105,6 +106,7 @@ def run_repeated_client_cmd(cmdstring, dst, communicator, parser_obj=None):
     operator = repeat_list[4]
     step = int(repeat_list[5])
     i = begin
+    data = {'runs':[]}
     while i <= end:
         repeat_cmd = '-' + cmd + ' ' + str(i)
         run_cmd = cmdstring.replace('REPEAT', repeat_cmd)
@@ -112,8 +114,7 @@ def run_repeated_client_cmd(cmdstring, dst, communicator, parser_obj=None):
         if VERBOSE:
             print(f'client_cmd: {run_cmd}')
 
-        run_client(run_cmd, dst, communicator, parser_obj)
-
+        res = run_client(run_cmd, dst, communicator, parser_obj)
         if operator == '+':
             i += step
         elif operator == '*':
@@ -121,6 +122,14 @@ def run_repeated_client_cmd(cmdstring, dst, communicator, parser_obj=None):
         else:
             print('Error computing step size')
             communicator.Abort()
+        if parser_obj:
+            if parser_obj.get_format() == 'json':
+                data['runs'].append(res)
+        else:
+            print(res)
+    if parser_obj:
+        if parser_obj.get_format() == 'json':
+            print(json.dumps(data))
 
 
 if __name__ == "__main__":
@@ -182,7 +191,8 @@ if __name__ == "__main__":
                 client_cmd, target_rank, comm, output_parser if args.parser else None)
         else:
             run_client.already_synced = False
-            run_client(client_cmd, target_rank, comm,
+            res = run_client(client_cmd, target_rank, comm,
                        output_parser if args.parser else None)
+            print(res)
         if KILL:
             comm.send('kill server msg', dest=0)
