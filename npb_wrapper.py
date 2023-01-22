@@ -108,7 +108,10 @@ def run_repeated_client_cmd(cmdstring, dst, communicator, parser_obj=None):
     i = begin
     data = {'runs':[]}
     while i <= end:
-        repeat_cmd = '-' + cmd + ' ' + str(i)
+        if '--REPEAT':
+            repeat_cmd = '--' + cmd + ' ' + str(i)
+        else:
+            repeat_cmd = '-' + cmd + ' ' + str(i)
         run_cmd = cmdstring.replace('REPEAT', repeat_cmd)
 
         if VERBOSE:
