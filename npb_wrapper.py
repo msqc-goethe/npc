@@ -107,6 +107,16 @@ def run_repeated_client_cmd(cmdstring, dst, communicator, parser_obj=None):
     step = int(repeat_list[5])
     i = begin
     data = {'runs':[]}
+    if parser_obj:
+        if parser_obj.get_format() == 'csv':
+            header = parser_obj.get_header()
+            l = len(header)-1
+            for n,h in enumerate(header):
+                if n is not l:
+                    print(h,end=',')
+                else:
+                    print(h,end='')
+            print('')
     while i <= end:
         if '--REPEAT':
             repeat_cmd = '--' + cmd + ' ' + str(i)
