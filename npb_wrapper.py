@@ -162,6 +162,9 @@ if __name__ == "__main__":
             benchmark output into desired format')
     parser.add_argument('--out_format', type=str,
                         help='Output format passed to custom cli parser')
+    parser.add_argument('--modify_hostname',nargs='+',type=str,
+                        help='Replaces given part of the of the hostname\
+                        --modify_hostname [SEARCH FOR] [REPLACE BY]')
     parser.add_argument('--header', nargs='+', type=str,
                         help='Header information')
     args = parser.parse_args()
@@ -198,6 +201,10 @@ if __name__ == "__main__":
     if my_rank == 0:
         run_server(args.servercmd, target_rank, comm, kill_server=KILL)
     else:
+        if args.modify_hostname:
+            OTHER_NAME.replace(args.modify_hostname[0],args.modify_hostname[1])
+            if VERBOSE:
+                print(f'Modified hostname is now {OTHER_NAME}')
         client_cmd = args.clientcmd.replace('HOSTNAME', OTHER_NAME)
         if '-repeat' in client_cmd:
             run_repeated_client_cmd(
