@@ -202,7 +202,6 @@ if __name__ == "__main__":
         run_server(args.servercmd, target_rank, comm, kill_server=KILL)
     else:
         if args.modify_hostname:
-            print(f'param1: {args.modify_hostname[0]} param2: {args.modify_hostname[1]}')
             OTHER_NAME = OTHER_NAME.replace(args.modify_hostname[0],args.modify_hostname[1])
             if VERBOSE:
                 print(f'Modified hostname is now {OTHER_NAME}')
