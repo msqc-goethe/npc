@@ -199,7 +199,11 @@ if __name__ == "__main__":
         print(f'rank {my_rank}: received hostname {OTHER_NAME}')
 
     if my_rank == 0:
-        run_server(args.servercmd, target_rank, comm, kill_server=KILL)
+        server_cmd = args.servercmd
+        if args.modify_hostname:
+            my_name = my_name.replace(args.modify_hostname[0],args.modify_hostname[1])
+            server_cmd = args.servercmd.replace('HOSTNAME',my_name)
+        run_server(server_cmd, target_rank, comm, kill_server=KILL)
     else:
         if args.modify_hostname:
             OTHER_NAME = OTHER_NAME.replace(args.modify_hostname[0],args.modify_hostname[1])
