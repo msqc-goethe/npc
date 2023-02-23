@@ -1,0 +1,44 @@
+name: qperf_rdma
+outpath: /scratch/fuchs/aglippert/bartelheimer/network_benchmarks
+comment: A qperf test
+
+parameterset:
+  - name: executeset
+    parameter:
+      - {name: submit_cmd, "_": sbatch}
+      - {name: job_file, "_": qperf.run}
+      - {name: nodes, type: int, "_":2}
+      - {name: partition, "_": fuchs}
+      - {name: ntasks, type: int , "_": 2}
+      - {name: ntask_per_node, type: int,"_": 1}
+      - {name: job_name, "_": qperf}
+      - {name: out_file, "_": qperf.dat} 
+      - {name: ready_file, "_": ready}
+
+fileset:
+  name: qperf_npc
+  copy: 
+    - ${job_file}.in
+    - ../npb_wrapper.py
+
+substituteset:
+  name: sub_qperf_job
+  iofile: {in: "${job_file}.in", out: $job_file}
+  sub:
+    - {source: "#NODES#", dest: $nodes}
+    - {source: "#PARTITION#", dest: $partition}
+    - {source: "#NTASKS#", dest: $ntasks}
+    - {source: "#NTASKS_PER_NODE#", dest: $ntask_per_node}
+    - {source: "#JOB_NAME#", dest: $job_name}
+    - {source: "#OUT_FILE#", dest: $out_file}
+    - {source: "#READY#", dest: $ready_file}
+
+step:
+  - name: submit
+    use: [executeset,qperf_npc,sub_qperf_job]
+    do:
+      done_file: $ready_file
+      _: $submit_cmd ${job_file}
+  - name: print
+    depend: submit
+    do: echo "Done benchmarking qperf"
