@@ -3,35 +3,12 @@
 import argparse
 import codecs
 import sys
-import importlib
 import re
-import json
 from subprocess import Popen, PIPE
 from mpi4py import MPI
 
 
 VERBOSE = False
-
-
-class StreamParser:
-    """Generic parser class encapsulating custom parser module"""
-
-    def __init__(self, module, out_format, header_information):
-        self.to_format = module.to_format
-        self.format = out_format
-        self.header = header_information
-
-    def convert_to_format(self, string):
-        """Get formated output"""
-        return self.to_format(string, self.header, self.format)
-
-    def get_format(self):
-        """Get format"""
-        return self.format
-
-    def get_header(self):
-        """Get header list"""
-        return self.header
 
 
 def decode_utf8(byte_code):
@@ -51,14 +28,14 @@ def run_server(cmd, dst, communicator, kill_server=False):
             stdout, stderr = process.communicate()
         else:
             stdout, stderr = process.communicate()
-        # if stderr:
-        #     print(f'Server error: {decode_utf8(stderr)}')
-        #     communicator.Abort()
+        if stderr:
+            print(f'Server error: {decode_utf8(stderr)}')
+            communicator.Abort()
         if VERBOSE:
             print(f'Server output: {decode_utf8(stdout)}')
 
 
-def run_client(cmd, source, communicator, stdout_parser=None):
+def run_client(cmd, source, communicator):
     """Run client command."""
     if not run_client.already_synced:
         sync = communicator.recv(source=source)
@@ -69,10 +46,7 @@ def run_client(cmd, source, communicator, stdout_parser=None):
         stdout, stderr = process.communicate()
         if stderr:
             print(f'Client error: {decode_utf8(stderr)}')
-        stdout = decode_utf8(stdout)
-        if stdout_parser:
-            stdout = stdout_parser.convert_to_format(stdout)
-        return stdout
+        return decode_utf8(stdout)
 
 
 def evaluate_repeat_regex(string):
@@ -95,7 +69,7 @@ def evaluate_repeat_regex(string):
     return []
 
 
-def run_repeated_client_cmd(cmdstring, dst, communicator, parser_obj=None):
+def run_repeated_client_cmd(cmdstring, dst, communicator):
     """Loop through parametes and perform actual measurement"""
     run_client.already_synced = False
     repeat_list = evaluate_repeat_regex(cmdstring)
@@ -106,17 +80,7 @@ def run_repeated_client_cmd(cmdstring, dst, communicator, parser_obj=None):
     operator = repeat_list[4]
     step = int(repeat_list[5])
     i = begin
-    data = {'runs':[]}
-    if parser_obj:
-        if parser_obj.get_format() == 'csv':
-            header = parser_obj.get_header()
-            l = len(header)-1
-            for n,h in enumerate(header):
-                if n is not l:
-                    print(h,end=',')
-                else:
-                    print(h,end='')
-            print('')
+
     while i <= end:
         if '--REPEAT':
             repeat_cmd = '--' + cmd + ' ' + str(i)
@@ -127,7 +91,7 @@ def run_repeated_client_cmd(cmdstring, dst, communicator, parser_obj=None):
         if VERBOSE:
             print(f'client_cmd: {run_cmd}')
 
-        res = run_client(run_cmd, dst, communicator, parser_obj)
+        res = run_client(run_cmd, dst, communicator)
         if operator == '+':
             i += step
         elif operator == '*':
@@ -135,14 +99,7 @@ def run_repeated_client_cmd(cmdstring, dst, communicator, parser_obj=None):
         else:
             print('Error computing step size')
             communicator.Abort()
-        if parser_obj:
-            if parser_obj.get_format() == 'json':
-                data['runs'].append(res)
-        else:
-            print(res)
-    if parser_obj:
-        if parser_obj.get_format() == 'json':
-            print(json.dumps(data))
+        print(res)
 
 
 if __name__ == "__main__":
@@ -158,27 +115,15 @@ if __name__ == "__main__":
                         side after measurements.')
     parser.add_argument(
         '--verbose', action=argparse.BooleanOptionalAction, help='Enable debug output')
-    parser.add_argument('--parser', type=str, help='Use given parser to directly convert\
-            benchmark output into desired format')
-    parser.add_argument('--out_format', type=str,
-                        help='Output format passed to custom cli parser')
     parser.add_argument('--modify_hostname',nargs='+',type=str,
                         help='Replaces given part of the of the hostname\
                         --modify_hostname [SEARCH FOR] [REPLACE BY]')
-    parser.add_argument('--header', nargs='+', type=str,
-                        help='Header information')
     args = parser.parse_args()
     KILL = False
     if args.verbose:
         VERBOSE = True
     if args.killserver:
         KILL = True
-    if args.parser:
-        if '.py' in args.parser:
-            args.parser = args.parser.replace('.py', '')
-        parser_module = importlib.import_module(args.parser)
-        output_parser = StreamParser(
-            parser_module, args.out_format, args.header)
 
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
@@ -212,11 +157,10 @@ if __name__ == "__main__":
         client_cmd = args.clientcmd.replace('HOSTNAME', OTHER_NAME)
         if '-repeat' in client_cmd:
             run_repeated_client_cmd(
-                client_cmd, target_rank, comm, output_parser if args.parser else None)
+                client_cmd, target_rank, comm)
         else:
             run_client.already_synced = False
-            res = run_client(client_cmd, target_rank, comm,
-                       output_parser if args.parser else None)
+            res = run_client(client_cmd, target_rank, comm)
             print(res)
         if KILL:
             comm.send('kill server msg', dest=0)
