@@ -2,11 +2,11 @@
 
 ## Workflow Implementation
 
-## Dependencies
+### Dependencies
 * python@3.2
 * [JUBE](https://apps.fz-juelich.de/jsc/jube/jube2/docu/index.html)
 
-## Basic Usage
+### Basic Usage
 ```
 jube run workflow/roofline-workflow.yaml
 jube continue [[WORKING DIRECTORY]]
