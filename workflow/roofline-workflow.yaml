@@ -1,0 +1,239 @@
+name: network_roofline_workflow
+outpath: $SCRATCH/roofline
+comment: An automated workflow to construct network and application perfomance characterization
+
+parameterset:
+  - name: hpcg_parameter
+    parameter:
+      - {name: index, _: '0,1'}
+      - {name: nprocs, mode: python, _: '[4,8][$index]'}
+      - {name: nnodes, mode: python, _: '[2,4][$index]'}
+      - {name: nprocs_per_node, type: int, _: 2}
+  - name: himeno_parameter
+    parameter:
+      - {name: index, _: '0,1'}
+      - {name: nprocs, mode: python, _: '[8,64][$index]'}
+      - {name: nnodes, mode: python, _: '[2,4][$index]'}
+      - {name: nprocs_per_node, mode: python, _: '[4,16][$index]'}
+      - {name: procdim, mode: python, _: '[2,4][$index]'}
+  - name: likwid_parameter
+    parameter:
+      - {name: benchmark_set, _: 'peakflops_avx,peakflops_sp_avx'}
+  - name: qperf_executeset
+    parameter:
+      - {name: submit_cmd, _: sbatch}
+      - {name: job_file, _: qperf.run}
+      - {name: nodes, type: int, _: 2}
+      - {name: partition, _: fuchs}
+      - {name: ntasks, type: int, _: 2}
+      - {name: ntask_per_node, type: int, _: 1}
+      - {name: job_name, _: qperf}
+      - {name: out_file, _: qperf.dat}
+      - {name: ready_file, _: ready}
+  - name: likwid_executeset
+    parameter:
+      - {name: submit_cmd, _: sbatch}
+      - {name: job_file, _: likwid.run}
+      - {name: nodes, type: int, _: 1}
+      - {name: partition, _: fuchs}
+      - {name: ntasks, type: int, _: 1}
+      - {name: ntask_per_node, type: int, _: 1}
+      - {name: benchmark, _: $benchmark_set}
+      - {name: job_name, _: likwid-bench-$benchmark_set}
+      - {name: out_file, _: likwid_$benchmark_set.dat}
+      - {name: ready_file, _: ready}
+  - name: hpcg_executeset
+    parameter:
+      - {name: submit_cmd, _: sbatch}
+      - {name: job_file, _: hpcg.run}
+      - {name: nodes, type: int, _: $nnodes}
+      - {name: partition, _: fuchs}
+      - {name: ntasks, type: int, _: $nprocs}
+      - {name: ntask_per_node, type: int, _: $nprocs_per_node}
+      - {name: job_name, _: hpcg_$nnodes}
+      - {name: out_file, _: hpcg_$nnodes.dat}
+      - {name: ready_file, _: ready}
+  - name: himeno_executeset
+    parameter:
+      - {name: submit_cmd, _: sbatch}
+      - {name: job_file, _: himeno.run}
+      - {name: nodes, type: int, _: $nnodes}
+      - {name: partition, _: fuchs}
+      - {name: ntasks, type: int, _: $nprocs}
+      - {name: ntask_per_node, type: int, _: $nprocs_per_node}
+      - {name: job_name, _: himeno_$nnodes}
+      - {name: out_file, _: himeno_$nnodes.dat}
+      - {name: ready_file, _: ready}
+      - {name: xdim, type: int, _: 512}
+      - {name: ydim, type: int, _: 512}
+      - {name: zdim, type: int, _: 1024}
+      - {name: ndx, type: int, _: $procdim}
+      - {name: ndy, type: int, _: $procdim}
+      - {name: ndz, type: int, _: $procdim}
+
+fileset:
+  - name: qperf_fs
+    copy:
+      - ${job_file}.in
+      - $$HOME/repos/npb-wrapper/npb_wrapper.py
+  - name: likwid_fs
+    copy: ${job_file}.in
+  - name: hpcg_fs
+    copy:
+      - ${job_file}.in
+      - $$HOME/repos/hpcg/build/xhpcg
+  - name: himeno_fs
+    copy:
+      - ${job_file}.in
+      - $$HOME/repos/cpp-himeno-benchmark/build/benchmark/himeno-benchmark
+
+substituteset:
+  - name: sub_qperf_job
+    iofile: {in: '${job_file}.in', out: $job_file}
+    sub:
+      - {source: '#NODES#', dest: $nodes}
+      - {source: '#PARTITION#', dest: $partition}
+      - {source: '#NTASKS#', dest: $ntasks}
+      - {source: '#NTASKS_PER_NODE#', dest: $ntask_per_node}
+      - {source: '#JOB_NAME#', dest: $job_name}
+      - {source: '#OUT_FILE#', dest: $out_file}
+      - {source: '#READY#', dest: $ready_file}
+  - name: sub_likwid_job
+    iofile: {in: '${job_file}.in', out: $job_file}
+    sub:
+      - {source: '#NODES#', dest: $nodes}
+      - {source: '#PARTITION#', dest: $partition}
+      - {source: '#NTASKS#', dest: $ntasks}
+      - {source: '#NTASKS_PER_NODE#', dest: $ntask_per_node}
+      - {source: '#BENCHMARK#', dest: $benchmark}
+      - {source: '#JOB_NAME#', dest: $job_name}
+      - {source: '#OUT_FILE#', dest: $out_file}
+      - {source: '#READY#', dest: $ready_file}
+  - name: sub_hpcg_job
+    iofile: {in: '${job_file}.in', out: $job_file}
+    sub:
+      - {source: '#NODES#', dest: $nodes}
+      - {source: '#PARTITION#', dest: $partition}
+      - {source: '#NTASKS#', dest: $ntasks}
+      - {source: '#NTASKS_PER_NODE#', dest: $ntask_per_node}
+      - {source: '#JOB_NAME#', dest: $job_name}
+      - {source: '#OUT_FILE#', dest: $out_file}
+      - {source: '#READY#', dest: $ready_file}
+  - name: sub_himeno_job
+    iofile: {in: '${job_file}.in', out: $job_file}
+    sub:
+      - {source: '#NODES#', dest: $nodes}
+      - {source: '#PARTITION#', dest: $partition}
+      - {source: '#NTASKS#', dest: $ntasks}
+      - {source: '#NTASKS_PER_NODE#', dest: $ntask_per_node}
+      - {source: '#JOB_NAME#', dest: $job_name}
+      - {source: '#OUT_FILE#', dest: $out_file}
+      - {source: '#READY#', dest: $ready_file}
+      - {source: '#XDIM#', dest: $xdim}
+      - {source: '#YDIM#', dest: $ydim}
+      - {source: '#ZDIM#', dest: $zdim}
+      - {source: '#NDX#', dest: $ndx}
+      - {source: '#NDY#', dest: $ndy}
+      - {source: '#NDZ#', dest: $ndz}
+
+patternset:
+  - name: qperf_pattern
+    pattern:
+      - {name: network_bw, unit: 'Bytes/s', dotall: true, _: 'rc_bw:.*?bw.\s=.\s$jube_pat_fp'}
+  - name: likwid_pattern
+    pattern:
+      - {name: likwid_perf, unit: 'MFlops', dotall: false, _: 'MFlops\/s:.*$jube_pat_fp'}
+      - {name: likwid_ops, dotall: false, _: 'Number of Flops:?\s$jube_pat_fp'}
+  - name: network_counter_pattern
+    pattern:
+      - {name: rcv, unit: 'Octets', dotall: false, _: 'port_rcv_data:.$jube_pat_fp'}
+      - {name: xmit, unit: 'Octets', dotall: false, _: 'port_xmit_data:.$jube_pat_fp'}
+  - name: hpcg_pattern
+    pattern:
+      - {name: hpcg_ops, dotall: false, _: 'Floating Point Operations Summary::Total=.$jube_pat_fp'}
+      - {name: hpcg_perf, unit: 'GFlops', dotall: false, _: 'GFLOP\/s Summary::Total with convergence and optimization phase overhead=$jube_pat_fp'}
+  - name: himeno_pattern
+    pattern:
+      - {name: himeno_ops, dotall: false, _: 'Floating Point Operations:.$jube_pat_int'}
+      - {name: himeno_perf, unit: 'MFlops', dotall: false, _: 'MFLOPS measured:.$jube_pat_fp'}
+
+step:
+  - name: qperf
+    use: [qperf_executeset, qperf_fs, sub_qperf_job]
+    do:
+        done_file: $ready_file
+        _: $submit_cmd ${job_file}
+  - name: likwid
+    use: [likwid_parameter, likwid_executeset, likwid_fs, sub_likwid_job]
+    do:
+        done_file: $ready_file
+        _: $submit_cmd ${job_file}
+  - name: hpcg
+    use: [hpcg_parameter, hpcg_executeset, hpcg_fs, sub_hpcg_job]
+    do:
+        done_file: $ready_file
+        _: $submit_cmd ${job_file}
+  - name: himeno
+    use: [himeno_parameter, himeno_executeset, himeno_fs, sub_himeno_job]
+    do:
+        done_file: $ready_file
+        _: $submit_cmd ${job_file}
+
+analyser:
+  - name: qperf_extract
+    use: qperf_pattern
+    reduce: false 
+    analyse:
+        step: qperf
+        file: $out_file
+  - name: likwid_extract
+    use: likwid_pattern
+    reduce: false
+    analyse:
+        step: likwid
+        file: $out_file
+  - name: hpcg_network
+    use: network_counter_pattern
+    reduce: false
+    analyse:
+        step: hpcg
+        file: $out_file
+  - name: hpcg_flops
+    use: hpcg_pattern
+    reduce: false
+    analyse:
+      step: hpcg
+      file: "HPCG-Benchmark_*.txt"
+  - name: himeno_network
+    use: network_counter_pattern
+    reduce: false
+    analyse:
+      step: himeno
+      file: $out_file
+  - name: himeno_flops
+    use: himeno_pattern
+    reduce: false
+    analyse:
+      step: himeno
+      file: $out_file
+
+result:
+    use: [qperf_extract,likwid_extract,hpcg_network,hpcg_flops,himeno_network,himeno_flops]
+    table:
+        name: result
+        #styles: csv,aligned,pretty
+        style: pretty
+        sort: jube_wp_id
+        column: 
+          - jube_res_analyser
+          - jube_wp_id
+          - benchmark
+          - network_bw
+          - likwid_perf
+          - likwid_ops
+          - hpcg_ops
+          - hpcg_perf
+          - himeno_ops
+          - himeno_perf
+          - rcv
+          - xmit

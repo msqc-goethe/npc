@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+#SBATCH --partition=#PARTITION#
+#SBATCH --ntasks=#NTASKS#
+#SBATCH --nodes=#NODES#
+#SBATCH --ntasks-per-node=#NTASKS_PER_NODE#
+#SBATCH --job-name=#JOB_NAME#
+#SBATCH --output=#OUT_FILE#
+
+BENCHMARK=#BENCHMARK#
+spack load likwid
+
+likwid-bench -t ${BENCHMARK} -W N:400kB:40
+
+touch #READY#

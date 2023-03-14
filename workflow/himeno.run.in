@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#SBATCH --partition=#PARTITION#
+#SBATCH --ntasks=#NTASKS#
+#SBATCH --nodes=#NODES#
+#SBATCH --ntasks-per-node=#NTASKS_PER_NODE#
+#SBATCH --job-name=#JOB_NAME#
+#SBATCH --output=#OUT_FILE#
+#SBATCH --mem=64G
+
+PROCS=#NTASKS#
+XDIM=#XDIM#
+YDIM=#YDIM#
+ZDIM=#ZDIM#
+NDX=#NDX#
+NDY=#NDY#
+NDZ=#NDZ#
+
+spack load papi
+spack load boost
+module load mpi/openmpi/3.1.2-gcc-8.2.0
+
+mpirun -np ${PROCS} ./himeno-benchmark -x ${XDIM} -y ${YDIM} -z ${ZDIM} --ndx ${NDX} --ndy ${NDY} --ndz ${NDZ}
+touch #READY#

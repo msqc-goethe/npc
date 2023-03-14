@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#SBATCH --partition=#PARTITION#
+#SBATCH --ntasks=#NTASKS#
+#SBATCH --nodes=#NODES#
+#SBATCH --ntasks-per-node=#NTASKS_PER_NODE#
+#SBATCH --job-name=#JOB_NAME#
+#SBATCH --output=#OUT_FILE#
+
+PROCS=#NTASKS#
+
+spack load papi
+module load mpi/openmpi/3.1.2-gcc-8.2.0
+
+mpirun -np ${PROCS} --map-by ppr:1:socket -x OMP_PLACES=cores -x OMP_NUM_THREADS=10 ./xhpcg --nx=104 --ny=104 --nz=104 --rt=60
+touch #READY#
